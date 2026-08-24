@@ -1,0 +1,53 @@
+# Posicion de meses: para decidir cuando entrar a una tenencia larga,
+# no para operar. Mira semanal y mensual, y solo pondera medias largas.
+
+extiende: base
+nombre: largo_plazo
+descripcion: Horizonte de meses. Semanal y mensual, tendencia por encima de todo.
+
+temporalidades: [1d, 1wk, 1mo]
+pesos_temporalidad:
+  1d: 3
+  1wk: 7
+  1mo: 9
+
+peso_osciladores: 0.3     # a este plazo el momentum casi no importa
+velas_senal: 5
+min_velas: 40
+
+parametros:
+  medias: [50, 100, 200]
+  medias_clave: [50, 200]
+  medias_pullback: [50, 100]
+  cruce_rapida: 50
+  cruce_lenta: 200        # el cruce dorado / de la muerte
+  tendencia: 200
+  ventana_swing: 10
+  lookback_divergencia: 90
+  donchian: 52
+
+niveles:
+  ventana_swing: 10
+  tolerancia_atr: 0.8
+  lookback_fibo: 500
+  medias_soporte: [50, 100, 200]
+  n_donchian: 52
+  pivotes_semanales: false
+
+riesgo:
+  modo_stop: estructura
+  stop_pct: 20.0
+  stop_atr: 3.0
+  modo_objetivo: nivel
+  objetivo_pct: 50.0
+  rr_minimo: 2.5
+  max_distancia_entrada_pct: 25.0
+  max_soportes: 4
+  permitir_cortos: false
+  riesgo_por_operacion_pct: 2.0
+  max_posicion_pct: 40.0
+
+backtest:
+  activo: true
+  max_velas: 60
+  min_operaciones: 6

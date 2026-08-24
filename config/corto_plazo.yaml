@@ -1,0 +1,53 @@
+# Escenario de corto plazo con stop -7% y objetivo +14%.
+# Es el pedido original: medias moviles + RSI + MACD + volumen, buscando
+# entradas por rebote, rupturas y los niveles de caida.
+#
+#   python analizar.py IBIT --perfil corto_plazo
+
+extiende: base
+nombre: corto_plazo
+descripcion: Corto plazo, riesgo 1:2 fijo (-7% / +14%), diario con confirmacion horaria.
+
+temporalidades: [1d, 60m]
+pesos_temporalidad:
+  60m: 4
+  1d: 6
+
+# En corto plazo el momentum manda mas que la tendencia de fondo.
+peso_osciladores: 0.6
+velas_senal: 2            # solo lo que paso en las ultimas 2 velas
+
+parametros:
+  # Medias mas cortas: el cruce 9/21 reacciona antes que el 20/50.
+  medias: [9, 20, 21, 50, 100, 200]
+  medias_clave: [9, 20, 50]
+  medias_pullback: [9, 20]
+  cruce_rapida: 9
+  cruce_lenta: 21
+  tendencia: 50
+  volumen_alto: 1.5
+  ventana_swing: 4
+
+niveles:
+  ventana_swing: 4
+  lookback_fibo: 90
+  medias_soporte: [9, 20, 50, 200]
+
+riesgo:
+  modo_stop: porcentaje
+  stop_pct: 7.0
+  modo_objetivo: porcentaje
+  objetivo_pct: 14.0
+  rr_minimo: 1.5
+  max_distancia_entrada_pct: 10.0
+  permitir_cortos: false
+
+  # Descomentar y poner el capital real para que calcule cuanto comprar:
+  # capital: 1000000
+  riesgo_por_operacion_pct: 1.0
+  max_posicion_pct: 25.0
+
+backtest:
+  activo: true
+  max_velas: 20           # ~1 mes de ruedas para que el +14% tenga tiempo de darse
+  min_operaciones: 8

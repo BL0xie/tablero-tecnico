@@ -1,0 +1,57 @@
+# Perfil del panel que se publica y se comparte.
+# Mismo escenario de corto plazo (-7% / +14%) pero en tres temporalidades,
+# para ver si el diario, el de 4 horas y el horario dicen lo mismo.
+#
+#   python publicar.py
+
+extiende: corto_plazo
+nombre: panel
+descripcion: Corto plazo (-7% / +14%) en diario, 4 horas y 1 hora.
+
+# Yahoo no sirve velas de 4h: se arman agrupando las horarias.
+temporalidades: [1d, 4h, 1h]
+pesos_temporalidad:
+  1d: 6
+  4h: 4
+  1h: 3
+
+# Los activos del panel. Para agregar o sacar, editar esta lista y listo.
+#
+# Los CEDEARs se analizan sobre el papel original en dolares (AAPL, no AAPL.BA):
+# el CEDEAR en pesos mezcla el movimiento de la accion con el del dolar CCL, y
+# eso ensucia los indicadores. El movimiento que replica es el de esta lista;
+# los precios de entrada hay que pasarlos al CEDEAR con el ratio de conversion.
+# Si prefiere ver los niveles directo en pesos, cambiar por el ticker .BA.
+tickers:
+  # Bitcoin via ETF
+  - IBIT
+  # CEDEARs mas operados (papel original en USD)
+  - AAPL
+  - NVDA
+  - TSLA
+  - AMZN
+  - MSFT
+  - GOOGL
+  - MELI
+  - KO
+  # Lideres del panel local
+  - GGAL.BA
+  - YPFD.BA
+  - PAMP.BA
+  - BMA.BA
+  - ALUA.BA
+
+panel:
+  titulo: Tablero tecnico
+  velas_grafico: 150       # velas que viajan al navegador: define hasta donde se puede alejar el zoom
+  temporalidad_grafico: 1d # cual se dibuja por defecto al abrir la ficha
+
+# Cuando corre la tarea que regenera el tablero. Tiene que coincidir con el cron
+# de la tarea programada: sirve para que la pagina pueda avisar cuando le toca la
+# proxima actualizacion, y para distinguir "esta pausado" de "deberia haber
+# corrido y no corrio".
+actualizacion:
+  dias: [0, 1, 2, 3, 4]      # lunes = 0 ... domingo = 6
+  hora_desde: 7
+  hora_hasta: 16
+  minutos: [4, 19, 34, 49]

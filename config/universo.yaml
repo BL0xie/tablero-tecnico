@@ -1,0 +1,106 @@
+# Universo de activos que ofrece el tablero para armar la cartera.
+#
+# Los CEDEARs figuran con el ticker del papel original en dolares (AAPL, no
+# AAPL.BA): el CEDEAR en pesos mezcla el movimiento de la accion con el del
+# dolar CCL y eso ensucia los indicadores. El movimiento que replica es el de
+# aca; los precios hay que pasarlos con el ratio de conversion.
+#
+# Para agregar un activo: sumar una linea con ticker, nombre y grupo.
+# Para sacarlo: borrar la linea. Nada mas.
+
+grupos:
+  cedear: CEDEARs
+  merval: Acciones argentinas
+  cripto: Cripto
+  indice: Índices y ETF
+
+activos:
+  # ---------------- Índices y ETF ----------------
+  - {ticker: IBIT,     nombre: iShares Bitcoin Trust,   grupo: indice}
+  - {ticker: SPY,      nombre: S&P 500,                 grupo: indice}
+  - {ticker: QQQ,      nombre: Nasdaq 100,              grupo: indice}
+  - {ticker: EEM,      nombre: Mercados emergentes,     grupo: indice}
+
+  # ---------------- Cripto ----------------
+  - {ticker: BTC-USD,  nombre: Bitcoin,                 grupo: cripto}
+  - {ticker: ETH-USD,  nombre: Ethereum,                grupo: cripto}
+  - {ticker: SOL-USD,  nombre: Solana,                  grupo: cripto}
+  - {ticker: XRP-USD,  nombre: XRP,                     grupo: cripto}
+  - {ticker: BNB-USD,  nombre: BNB,                     grupo: cripto}
+  - {ticker: ADA-USD,  nombre: Cardano,                 grupo: cripto}
+  - {ticker: DOGE-USD, nombre: Dogecoin,                grupo: cripto}
+
+  # ---------------- CEDEARs: tecnología ----------------
+  - {ticker: AAPL,     nombre: Apple,                   grupo: cedear}
+  - {ticker: MSFT,     nombre: Microsoft,               grupo: cedear}
+  - {ticker: GOOGL,    nombre: Alphabet,                grupo: cedear}
+  - {ticker: AMZN,     nombre: Amazon,                  grupo: cedear}
+  - {ticker: META,     nombre: Meta,                    grupo: cedear}
+  - {ticker: NVDA,     nombre: Nvidia,                  grupo: cedear}
+  - {ticker: TSLA,     nombre: Tesla,                   grupo: cedear}
+  - {ticker: NFLX,     nombre: Netflix,                 grupo: cedear}
+  - {ticker: AMD,      nombre: AMD,                     grupo: cedear}
+  - {ticker: INTC,     nombre: Intel,                   grupo: cedear}
+  - {ticker: QCOM,     nombre: Qualcomm,                grupo: cedear}
+  - {ticker: CSCO,     nombre: Cisco,                   grupo: cedear}
+  - {ticker: ORCL,     nombre: Oracle,                  grupo: cedear}
+  - {ticker: IBM,      nombre: IBM,                     grupo: cedear}
+  - {ticker: AVGO,     nombre: Broadcom,                grupo: cedear}
+  - {ticker: TSM,      nombre: TSMC,                    grupo: cedear}
+  - {ticker: SHOP,     nombre: Shopify,                 grupo: cedear}
+  - {ticker: SPOT,     nombre: Spotify,                 grupo: cedear}
+  - {ticker: UBER,     nombre: Uber,                    grupo: cedear}
+  - {ticker: ABNB,     nombre: Airbnb,                  grupo: cedear}
+  - {ticker: PYPL,     nombre: PayPal,                  grupo: cedear}
+  - {ticker: BABA,     nombre: Alibaba,                 grupo: cedear}
+
+  # ---------------- CEDEARs: latinoamericanas ----------------
+  - {ticker: MELI,     nombre: MercadoLibre,            grupo: cedear}
+  - {ticker: GLOB,     nombre: Globant,                 grupo: cedear}
+  - {ticker: VIST,     nombre: Vista Energy,            grupo: cedear}
+
+  # ---------------- CEDEARs: consumo y salud ----------------
+  - {ticker: KO,       nombre: Coca-Cola,               grupo: cedear}
+  - {ticker: PEP,      nombre: PepsiCo,                 grupo: cedear}
+  - {ticker: MCD,      nombre: McDonalds,               grupo: cedear}
+  - {ticker: SBUX,     nombre: Starbucks,               grupo: cedear}
+  - {ticker: NKE,      nombre: Nike,                    grupo: cedear}
+  - {ticker: WMT,      nombre: Walmart,                 grupo: cedear}
+  - {ticker: COST,     nombre: Costco,                  grupo: cedear}
+  - {ticker: DIS,      nombre: Disney,                  grupo: cedear}
+  - {ticker: JNJ,      nombre: Johnson & Johnson,       grupo: cedear}
+  - {ticker: PFE,      nombre: Pfizer,                  grupo: cedear}
+
+  # ---------------- CEDEARs: bancos, energía e industria ----------------
+  - {ticker: JPM,      nombre: JPMorgan,                grupo: cedear}
+  - {ticker: BAC,      nombre: Bank of America,         grupo: cedear}
+  - {ticker: V,        nombre: Visa,                    grupo: cedear}
+  - {ticker: MA,       nombre: Mastercard,              grupo: cedear}
+  - {ticker: XOM,      nombre: Exxon Mobil,             grupo: cedear}
+  - {ticker: CVX,      nombre: Chevron,                 grupo: cedear}
+  - {ticker: BA,       nombre: Boeing,                  grupo: cedear}
+  - {ticker: GOLD,     nombre: Barrick Gold,            grupo: cedear}
+
+  # ---------------- Acciones argentinas ----------------
+  - {ticker: GGAL.BA,  nombre: Grupo Galicia,           grupo: merval}
+  - {ticker: BMA.BA,   nombre: Banco Macro,             grupo: merval}
+  - {ticker: BBAR.BA,  nombre: BBVA Argentina,          grupo: merval}
+  - {ticker: SUPV.BA,  nombre: Grupo Supervielle,       grupo: merval}
+  - {ticker: YPFD.BA,  nombre: YPF,                     grupo: merval}
+  - {ticker: PAMP.BA,  nombre: Pampa Energía,           grupo: merval}
+  - {ticker: CEPU.BA,  nombre: Central Puerto,          grupo: merval}
+  - {ticker: EDN.BA,   nombre: Edenor,                  grupo: merval}
+  - {ticker: TGSU2.BA, nombre: Transportadora Gas Sur,  grupo: merval}
+  - {ticker: TGNO4.BA, nombre: Transportadora Gas Norte, grupo: merval}
+  - {ticker: TRAN.BA,  nombre: Transener,               grupo: merval}
+  - {ticker: METR.BA,  nombre: Metrogas,                grupo: merval}
+  - {ticker: TXAR.BA,  nombre: Ternium Argentina,       grupo: merval}
+  - {ticker: ALUA.BA,  nombre: Aluar,                   grupo: merval}
+  - {ticker: LOMA.BA,  nombre: Loma Negra,              grupo: merval}
+  - {ticker: MIRG.BA,  nombre: Mirgor,                  grupo: merval}
+  - {ticker: COME.BA,  nombre: Sociedad Comercial,      grupo: merval}
+  - {ticker: CRES.BA,  nombre: Cresud,                  grupo: merval}
+  - {ticker: AGRO.BA,  nombre: Agrometal,               grupo: merval}
+  - {ticker: BYMA.BA,  nombre: BYMA,                    grupo: merval}
+  - {ticker: VALO.BA,  nombre: Grupo Financiero Valores, grupo: merval}
+  - {ticker: CVH.BA,   nombre: Cablevisión Holding,     grupo: merval}
