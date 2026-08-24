@@ -110,15 +110,22 @@ activos y tres temporalidades cada uno, mandar imágenes hechas era inviable.
 Cuántas velas viajan lo define `velas_grafico` en `config/panel.yaml`, y es lo que
 marca hasta dónde se puede alejar el zoom.
 
-**Link publicado:** https://claude.ai/code/artifact/f25ff54e-9f53-459c-800d-25794d4a14bc
+**El tablero vive en: https://bl0xie.github.io/tablero-tecnico/**
 
-Para actualizarlo hay que republicar **con esa misma URL**; si se publica sin
-indicarla se crea una página nueva y el link que ya tiene Damián queda viejo.
+Página pública en GitHub Pages: sin cuenta, sin login, siempre la última versión.
+Es el link que usa Damián. El despliegue lo hace `python publicar.py --desplegar`,
+que reemplaza el único commit de la rama `pagina` (por eso el push forzado ahí es
+el funcionamiento normal: con commits acumulados el repo crecería ~1 GB por mes).
+
+También existe un artifact de Claude con el mismo contenido
+(https://claude.ai/code/artifact/f25ff54e-9f53-459c-800d-25794d4a14bc), pero quedó
+como secundario: pide cuenta de Claude y su "pin" de compartir congela la versión
+visible hasta moverlo a mano.
 
 ### Actualización automática
 
-Hay una tarea programada (`tablero-tecnico-damian`) que corre `publicar.py` y
-republica el tablero **cada 15 minutos de 7:04 a 16:49, hora de esta PC**, de
+Hay una tarea programada (`tablero-tecnico-damian`) que corre
+`python publicar.py --desplegar` y actualiza la página **cada 15 minutos de 7:04 a 16:49, hora de esta PC**, de
 lunes a viernes. Cubre desde antes de la apertura hasta después del cierre.
 
 Los 15 minutos no son arbitrarios: cada corrida tarda unos 2 minutos en analizar
