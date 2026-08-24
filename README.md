@@ -135,8 +135,8 @@ ganar nada, porque las velas de 1 hora y diarias no cambian en ese lapso.
 Dos cosas que conviene tener presentes:
 
 - **La PC está configurada en UTC−5**, no en hora argentina. El cron usa la hora
-  local de la máquina, así que esos horarios son 9:47 y 17:47 en Argentina. Si se
-  cambia la zona horaria de Windows, hay que reajustar la tarea.
+  local de la máquina: la ventana 7:04–16:49 equivale a 9:04–18:49 en Argentina.
+  Si se cambia la zona horaria de Windows, hay que reajustar la tarea.
 - **La tarea corre mientras la aplicación está abierta.** Si estaba cerrada a la
   hora prevista, se ejecuta la próxima vez que se abra.
 
