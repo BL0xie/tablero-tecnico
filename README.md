@@ -124,25 +124,50 @@ visible hasta moverlo a mano.
 
 ### Actualización automática
 
-Hay una tarea programada (`tablero-tecnico-damian`) que corre
-`python publicar.py --desplegar` y actualiza la página **cada 15 minutos de 7:04 a 16:49, hora de esta PC**, de
-lunes a viernes. Cubre desde antes de la apertura hasta después del cierre.
+La actualización la hace **GitHub Actions**, en `.github/workflows/tablero.yml`:
+cada 15 minutos entre las 13:00 y las 21:00 UTC de lunes a viernes, más una
+corrida al cierre. Esa franja cubre las dos ruedas — Nueva York (9:30–16:00 ET) y
+Buenos Aires (11:00–17:00 ART).
+
+Corre en la infraestructura de GitHub, así que **el tablero se mantiene fresco
+aunque la PC esté apagada**. Antes esto lo hacía una tarea programada local, que
+solo se ejecutaba con la aplicación abierta: el 24/08 se saltearon unas 14
+actualizaciones seguidas por tener la máquina cerrada. Por eso se movió.
+
+El workflow no publica si el análisis salió mal: antes de subir verifica que el
+archivo exista, pese más de 1 MB y contenga datos de activos. Si Yahoo falla, la
+versión anterior sigue en línea, que es mejor que una vacía.
+
+Para correrlo a mano: pestaña **Actions** del repositorio → *Tablero tecnico* →
+*Run workflow*. O desde la terminal:
+
+```bash
+gh workflow run tablero.yml
+```
 
 Los 15 minutos no son arbitrarios: cada corrida tarda unos 2 minutos en analizar
-los 76 activos, más el tiempo de republicar. Bajarlo más solaparía corridas sin
-ganar nada, porque las velas de 1 hora y diarias no cambian en ese lapso.
-
-Dos cosas que conviene tener presentes:
-
-- **La PC está configurada en UTC−5**, no en hora argentina. El cron usa la hora
-  local de la máquina: la ventana 7:04–16:49 equivale a 9:04–18:49 en Argentina.
-  Si se cambia la zona horaria de Windows, hay que reajustar la tarea.
-- **La tarea corre mientras la aplicación está abierta.** Si estaba cerrada a la
-  hora prevista, se ejecuta la próxima vez que se abra.
+los 76 activos. Bajarlo más solaparía corridas sin ganar nada, porque las velas
+de 1 hora y diarias no cambian en ese lapso.
 
 Cada corrida compara contra `salidas/estado.json` e informa qué activos cambiaron
-de veredicto desde la vez anterior, que es lo único que hace falta mirar cuando el
-tablero se actualiza solo.
+de veredicto desde la vez anterior — aunque en Actions ese archivo no persiste
+entre corridas, así que la comparación sirve sobre todo al correr en local.
+
+**Ojo con un detalle de GitHub**: los workflows programados de un repositorio
+público se desactivan solos tras 60 días sin actividad en el repo. Si el tablero
+deja de actualizarse sin motivo aparente, revisar eso primero.
+
+#### Correrlo desde la propia PC
+
+Sigue funcionando y es útil para probar cambios:
+
+```bash
+python publicar.py --desplegar
+```
+
+Reemplaza el único commit de la rama `pagina` con un worktree en `.despliegue/`.
+Si se usa junto con el workflow, evitar que coincidan: los dos empujan la misma
+rama con force.
 
 ### Lo que el tablero no hace
 
