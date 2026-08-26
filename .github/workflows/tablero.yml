@@ -165,5 +165,11 @@ jobs:
             echo "- Segmento: $(( ($(date -u +%s) - inicio) / 60 )) minutos"
           } >> $GITHUB_STEP_SUMMARY
 
-          # El segmento se considera bueno si publico al menos una vez.
+          # El segmento se considera bueno si publico al menos una vez. Un
+          # arranque que entra con la rueda ya cerrada no da ninguna vuelta:
+          # no es una falla, es que no habia nada que hacer.
+          if [ "$vuelta" -eq 0 ]; then
+            echo "Arranco fuera de horario. Nada que publicar."
+            exit 0
+          fi
           test "$publicadas" -gt 0
