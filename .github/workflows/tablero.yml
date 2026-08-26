@@ -1,8 +1,21 @@
 # Regenera el tablero y lo publica, sin depender de que la PC este prendida.
 #
-# La tarea programada local solo corre con la aplicacion abierta: el 24/08 se
-# saltearon unas 14 actualizaciones por eso. Esto corre en la infraestructura de
-# GitHub, asi que el tablero se mantiene fresco aunque la maquina este apagada.
+# POR QUE UN BUCLE Y NO UN CRON CADA 15 MINUTOS
+#
+# La version anterior pedia "*/15 13-21 * * 1-5" y en los hechos corria cada 35
+# a 50 minutos, con algun hueco de dos horas: el planificador de cron de GitHub
+# es best-effort y descarta disparos cuando la cola esta cargada. Cuanto mas
+# seguido se le pide, mas saltea. No hay forma de apretarlo por ese lado.
+#
+# Asi que el cron ahora solo ARRANCA el trabajo (una vez por hora, para tener
+# varias oportunidades de empezar), y adentro del trabajo un bucle republica
+# cada 15 minutos por reloj propio. El bucle si es puntual.
+#
+# El relevo entre segmentos lo hace la concurrencia: GitHub admite un trabajo
+# corriendo y uno solo esperando, y el nuevo que espera reemplaza al anterior.
+# Cada arranque horario queda en espera; cuando el que corre llega a su tope de
+# 3h30, el que esperaba entra sin hueco. No hace falta ningun token extra para
+# que el trabajo se re-dispare a si mismo.
 #
 # Los horarios van en UTC. La rueda de Nueva York (9:30-16:00 ET) y la de Buenos
 # Aires (11:00-17:00 ART) caen juntas entre las 13:00 y las 21:00 UTC.
@@ -11,14 +24,15 @@ name: Tablero tecnico
 
 on:
   schedule:
-    # Cada 15 minutos durante la rueda, de lunes a viernes.
-    - cron: "*/15 13-21 * * 1-5"
-    # Una corrida al cierre, con las velas del dia ya cerradas.
-    - cron: "20 21 * * 1-5"
+    # Un arranque por hora. El primero que agarre se queda con la rueda; el
+    # resto espera turno y sirve de relevo (o de red, si GitHub saltea alguno).
+    - cron: "0 13-21 * * 1-5"
+    # Cierre, con las velas del dia ya cerradas.
+    - cron: "25 21 * * 1-5"
   workflow_dispatch:        # permite correrlo a mano desde la pestana Actions
 
-# Una sola corrida a la vez: si una se demora, la siguiente espera en vez de
-# pisarla y dejar la rama en un estado raro.
+# Uno corriendo y uno esperando. Sin cancel-in-progress: el que corre termina su
+# segmento tranquilo y recien ahi entra el siguiente.
 concurrency:
   group: tablero
   cancel-in-progress: false
@@ -29,7 +43,23 @@ permissions:
 jobs:
   publicar:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # El bucle corta solo a las 3h30. Esto es la red por si algo se cuelga.
+    timeout-minutes: 240
+
+    env:
+      CADA_MINUTOS: 15        # cada cuanto se republica
+      FIN_RUEDA_UTC: 2130     # despues de esta hora el bucle se va a dormir
+      TOPE_SEGMENTO_MIN: 210  # 3h30, bien por debajo del limite de 6h por trabajo
+      PYTHONIOENCODING: utf-8
+      # El bucle reusa la misma maquina, asi que cache/ sobrevive entre vueltas.
+      # Con la vida por defecto (30 min en intradiario) la mitad de las vueltas
+      # republicaria una pagina identica, que es justo lo que no queremos. Con
+      # el tope en 10 el cache queda vencido en cada vuelta de 15 y los datos
+      # se bajan de nuevo: son 228 pedidos a Yahoo cada 15 minutos, ~900 por
+      # hora desde una sola IP. Entra comodo en lo que Yahoo tolera, y si algun
+      # dia no entrara, datos.py cae al cache viejo antes que quedarse sin nada
+      # y esta vuelta se saltea sin pisar la version publicada.
+      TECNICO_CACHE_MIN: 10
 
     steps:
       - name: Traer el codigo
@@ -44,43 +74,96 @@ jobs:
       - name: Instalar dependencias
         run: pip install --quiet -r requirements.txt
 
-      - name: Generar el tablero
-        run: python publicar.py --archivo
-        env:
-          PYTHONIOENCODING: utf-8
-
-      - name: Comprobar que el tablero salio entero
-        # Si Yahoo falla o devuelve poco, mejor no publicar: la version anterior
-        # sigue siendo valida y es preferible a uno vacio o a medias.
+      - name: Republicar cada 15 minutos hasta el cierre
         run: |
+          set -uo pipefail
+
           ARCHIVO=salidas/tablero-para-compartir.html
-          test -f "$ARCHIVO" || { echo "No se genero el archivo"; exit 1; }
-          PESO=$(stat -c%s "$ARCHIVO")
-          echo "Peso: $((PESO/1024)) KB"
-          test "$PESO" -gt 1000000 || { echo "Archivo sospechosamente chico"; exit 1; }
-          grep -q '"activos"' "$ARCHIVO" || { echo "Sin datos de activos"; exit 1; }
 
-      - name: Publicar en la rama de la pagina
-        run: |
-          set -e
-          ARCHIVO=salidas/tablero-para-compartir.html
-          # Rama huerfana con un unico commit: la pagina pesa 3,4 MB y se
-          # publica decenas de veces por dia; acumulando commits el repo
-          # crecería cerca de un giga por mes.
-          rm -rf .publicacion && mkdir .publicacion
-          cp "$ARCHIVO" .publicacion/index.html
-          touch .publicacion/.nojekyll
-          cd .publicacion
-          git init -q -b pagina
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -q -m "Tablero tecnico $(date -u '+%Y-%m-%d %H:%M UTC')"
-          git push -q --force \
-            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
-            pagina
+          # Publica el HTML recien generado en la rama huerfana `pagina`.
+          # Rama de un solo commit: la pagina pesa 3,4 MB y se publica decenas
+          # de veces por dia; apilando commits el repo crecería cerca de un
+          # giga por mes.
+          publicar_pagina() {
+            rm -rf .publicacion && mkdir .publicacion
+            cp "$ARCHIVO" .publicacion/index.html
+            touch .publicacion/.nojekyll
+            (
+              cd .publicacion
+              git init -q -b pagina
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add -A
+              git commit -q -m "Tablero tecnico $(date -u '+%Y-%m-%d %H:%M UTC')"
+              git push -q --force \
+                "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+                pagina
+            )
+          }
 
-      - name: Resumen
-        run: |
-          echo "Publicado en https://${{ github.repository_owner }}.github.io/tablero-tecnico/" >> $GITHUB_STEP_SUMMARY
-          echo "Generado: $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          # Si Yahoo falla o devuelve poco, mejor no publicar: la version
+          # anterior sigue siendo valida y es preferible a una vacia o a medias.
+          tablero_esta_entero() {
+            test -f "$ARCHIVO" || { echo "No se genero el archivo"; return 1; }
+            local peso
+            peso=$(stat -c%s "$ARCHIVO")
+            echo "Peso: $((peso/1024)) KB"
+            test "$peso" -gt 1000000 || { echo "Archivo sospechosamente chico"; return 1; }
+            grep -q '"activos"' "$ARCHIVO" || { echo "Sin datos de activos"; return 1; }
+          }
+
+          inicio=$(date -u +%s)
+          vuelta=0
+          publicadas=0
+          fallidas=0
+
+          while :; do
+            ahora=$((10#$(date -u +%H%M)))
+            if [ "$ahora" -ge "$FIN_RUEDA_UTC" ]; then
+              echo "Cerro la rueda ($(date -u '+%H:%M UTC')). El bucle termina aca."
+              break
+            fi
+
+            vuelta=$((vuelta + 1))
+            echo "::group::Vuelta $vuelta — $(date -u '+%H:%M UTC')"
+            if python publicar.py --archivo && tablero_esta_entero; then
+              if publicar_pagina; then
+                publicadas=$((publicadas + 1))
+                echo "Publicado."
+              else
+                fallidas=$((fallidas + 1))
+                echo "El push fallo. Se reintenta en la proxima vuelta."
+              fi
+            else
+              fallidas=$((fallidas + 1))
+              echo "No se publica esta vuelta: queda la version anterior."
+            fi
+            echo "::endgroup::"
+
+            transcurrido=$(( $(date -u +%s) - inicio ))
+            if [ "$transcurrido" -ge $((TOPE_SEGMENTO_MIN * 60)) ]; then
+              echo "Tope del segmento. El arranque siguiente toma la posta."
+              break
+            fi
+
+            # Slots alineados al arranque: si una vuelta tarda 3 minutos, se
+            # duerme 12, no 15. Asi el tablero sale siempre en punto.
+            proximo=$(( inicio + vuelta * CADA_MINUTOS * 60 ))
+            espera=$(( proximo - $(date -u +%s) ))
+            if [ "$espera" -gt 0 ]; then
+              echo "Proxima vuelta en $((espera / 60))m $((espera % 60))s."
+              sleep "$espera"
+            fi
+          done
+
+          {
+            echo "Publicado en https://${{ github.repository_owner }}.github.io/tablero-tecnico/"
+            echo ""
+            echo "- Vueltas: $vuelta"
+            echo "- Publicadas: $publicadas"
+            echo "- Salteadas: $fallidas"
+            echo "- Segmento: $(( ($(date -u +%s) - inicio) / 60 )) minutos"
+          } >> $GITHUB_STEP_SUMMARY
+
+          # El segmento se considera bueno si publico al menos una vez.
+          test "$publicadas" -gt 0

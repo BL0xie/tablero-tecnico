@@ -9,6 +9,7 @@ Los datos quedan cacheados en cache/ para no re-descargar en cada corrida.
 """
 from __future__ import annotations
 
+import os
 import time
 from pathlib import Path
 
@@ -33,6 +34,25 @@ HISTORIAL = {
 # Cuantos minutos vale el cache segun temporalidad.
 VIDA_CACHE = {"1m": 2, "5m": 5, "15m": 10, "30m": 15, "60m": 30, "1h": 30,
               "1d": 60, "1wk": 240, "1mo": 720}
+
+
+def _vida_cache(intervalo: str) -> float:
+    """Minutos que vale el cache, con un tope opcional por variable de entorno.
+
+    La publicacion automatica corre en bucle sobre la misma maquina, asi que el
+    cache le sirve para no golpearle la puerta a Yahoo en cada vuelta. Pero con
+    la vida por defecto (30 min en 1h) la mitad de las vueltas republicaria una
+    pagina identica. TECNICO_CACHE_MIN=10 afina ese refresco solo donde hace
+    falta, sin cambiar el comportamiento de las corridas a mano.
+    """
+    vida = VIDA_CACHE.get(intervalo, 60)
+    tope = os.environ.get("TECNICO_CACHE_MIN", "").strip()
+    if tope:
+        try:
+            return min(vida, float(tope))
+        except ValueError:
+            pass  # valor mal escrito: se ignora y vale la vida por defecto
+    return vida
 
 # Velas por año, para anualizar volatilidad y metricas.
 VELAS_ANIO = {"1m": 98280, "5m": 19656, "15m": 6552, "30m": 3276,
@@ -111,7 +131,7 @@ def descargar(ticker: str, intervalo: str = "1d", periodo: str | None = None,
 
     if usar_cache and ruta.exists():
         edad_min = (time.time() - ruta.stat().st_mtime) / 60
-        if edad_min < VIDA_CACHE.get(intervalo, 60):
+        if edad_min < _vida_cache(intervalo):
             try:
                 return _normalizar(pd.read_parquet(ruta), ticker)
             except Exception:

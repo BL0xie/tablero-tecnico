@@ -125,9 +125,22 @@ visible hasta moverlo a mano.
 ### Actualización automática
 
 La actualización la hace **GitHub Actions**, en `.github/workflows/tablero.yml`:
-cada 15 minutos entre las 13:00 y las 21:00 UTC de lunes a viernes, más una
-corrida al cierre. Esa franja cubre las dos ruedas — Nueva York (9:30–16:00 ET) y
-Buenos Aires (11:00–17:00 ART).
+cada 15 minutos entre las 13:00 y las 21:30 UTC de lunes a viernes. Esa franja
+cubre las dos ruedas — Nueva York (9:30–16:00 ET) y Buenos Aires (11:00–17:00
+ART).
+
+**Los 15 minutos los cuenta el propio trabajo, no el cron.** La primera versión
+le pedía a cron `*/15` y en los hechos corría cada 35–50 minutos, con huecos de
+hasta dos horas: el planificador de workflows programados de GitHub es
+best-effort y descarta disparos cuando la cola está cargada — cuanto más seguido
+se le pide, más saltea. Ahora el cron solo **arranca** el trabajo (una vez por
+hora, para tener varias oportunidades de empezar) y adentro un bucle republica
+cada 15 minutos por reloj propio, que sí es puntual.
+
+El relevo entre tramos lo hace la concurrencia, sin necesidad de un token extra
+para que el trabajo se re-dispare solo: GitHub admite un trabajo corriendo y uno
+esperando, y cada arranque horario nuevo reemplaza al que esperaba. Cuando el que
+corre llega a su tope de 3h30, el que estaba en la cola entra sin hueco.
 
 Corre en la infraestructura de GitHub, así que **el tablero se mantiene fresco
 aunque la PC esté apagada**. Antes esto lo hacía una tarea programada local, que
@@ -145,13 +158,21 @@ Para correrlo a mano: pestaña **Actions** del repositorio → *Tablero tecnico*
 gh workflow run tablero.yml
 ```
 
-Los 15 minutos no son arbitrarios: cada corrida tarda unos 2 minutos en analizar
-los 76 activos. Bajarlo más solaparía corridas sin ganar nada, porque las velas
-de 1 hora y diarias no cambian en ese lapso.
+Los 15 minutos no son arbitrarios: cada vuelta tarda unos 3 minutos en analizar
+los 76 activos. Bajarlo más dejaría el tablero rehaciéndose casi sin pausa y
+triplicaría los pedidos a Yahoo, que ya son 228 por vuelta (~900 por hora desde
+una sola IP, porque el bucle corre siempre en la misma máquina).
 
-Cada corrida compara contra `salidas/estado.json` e informa qué activos cambiaron
-de veredicto desde la vez anterior — aunque en Actions ese archivo no persiste
-entre corridas, así que la comparación sirve sobre todo al correr en local.
+Ese bucle también le pone un tope al caché vía `TECNICO_CACHE_MIN=10`: con la
+vida por defecto del intradiario (30 min) la mitad de las vueltas republicaría
+una página idéntica. Ver `_vida_cache()` en `tecnico/datos.py`; la variable no
+existe fuera de Actions, así que las corridas a mano no cambian.
+
+Cada vuelta compara contra `salidas/estado.json` e informa qué activos cambiaron
+de veredicto desde la anterior. Como el bucle reusa la misma máquina, ese archivo
+ahora **sí** persiste entre vueltas de un mismo tramo: los "CAMBIOS DE VEREDICTO"
+del log de Actions son reales (antes, con una corrida por máquina, siempre salían
+vacíos y la comparación solo servía en local).
 
 **Ojo con un detalle de GitHub**: los workflows programados de un repositorio
 público se desactivan solos tras 60 días sin actividad en el repo. Si el tablero
