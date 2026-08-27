@@ -17,7 +17,8 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from . import backtest, calculo as ind, datos, niveles, plan, rating
+from . import (backtest, calculo as ind, datos, investing, niveles,
+               plan, rating)
 
 RAIZ = Path(__file__).resolve().parent.parent
 DIR_CONFIG = RAIZ / "config"
@@ -85,6 +86,14 @@ def analizar_temporalidad(ticker: str, intervalo: str, cfg: dict,
     resumen = rating.resumen_general(osc, med, cfg.get("peso_osciladores", 0.5),
                                      df=df, cfg=cfg)
 
+    # El mismo grafico leido con el criterio de Investing.com, para contrastar.
+    # No reemplaza al veredicto propio: cuando los dos coinciden la señal es mas
+    # solida, y cuando difieren conviene saber por que.
+    try:
+        segunda_lectura = investing.evaluar(df)
+    except Exception:
+        segunda_lectura = None
+
     senales = rating.senales_clave(df, cfg)
     sesgo = rating.sesgo_de_senales(senales)
 
@@ -114,6 +123,7 @@ def analizar_temporalidad(ticker: str, intervalo: str, cfg: dict,
         "osciladores": osc,
         "medias": med,
         "resumen": resumen,
+        "investing": segunda_lectura,
         "senales": senales,
         "sesgo": sesgo,
         "zonas": zonas,

@@ -260,6 +260,45 @@ EMA 200 y con cinco toques históricos, sí.
 
 ---
 
+## Dos criterios cruzados: TradingView e Investing
+
+El resumen técnico de Investing.com y el de TradingView **no son la misma cosa**,
+aunque en pantalla se parezcan. El motor principal (`tecnico/rating.py`) replica
+el de TradingView; `tecnico/investing.py` replica el de Investing, y el tablero
+muestra los dos para poder contrastarlos.
+
+Diferencias verificadas contra investing.com (AAPL diario, 27/08/2026):
+
+| | Investing | TradingView (el nuestro) |
+|---|---|---|
+| Estocástico | STOCH(9,6) | STOCH(14,3,3) |
+| CCI | 14 períodos | 20 períodos |
+| Solo lo tiene uno | ATR(14), Highs/Lows(14), ROC | Awesome Oscillator, Momentum(10) |
+| Medias | 5, 10, 20, 50, 100, 200 (12 filas) | 10, 20, 30, 50, 100, 200 + Ichimoku, VWMA y Hull (15 filas) |
+| Regla del RSI | compra con RSI > 50 | compra solo si viene de sobreventa girando al alza |
+| Sobrecompra | queda **fuera del conteo** | cuenta como neutral |
+
+Las dos últimas filas son las que más separan los veredictos. Investing marca
+compra mucho más seguido, y —esto es lo importante— **puede decir "compra fuerte"
+justo cuando el activo está más caliente**, porque los indicadores en sobrecompra
+no restan: simplemente desaparecen del conteo. En BTC se vieron cuatro de doce
+fuera por ese motivo, con el RSI en 82.
+
+Medido sobre los 76 activos: **coinciden en el bando el 89% de las veces**, y
+cuando difieren, en el 37% de los casos Investing es el más alcista.
+
+El tablero muestra los dos veredictos uno al lado del otro y avisa si coinciden.
+Cuando los dos apuntan al mismo lado la señal es más sólida; cuando no, conviene
+esperar. El desplegable "Cómo lee este gráfico Investing.com" trae las doce filas
+con sus valores y señales.
+
+Una advertencia honesta: los valores salen de Yahoo Finance, no del proveedor de
+Investing, así que los números no coinciden al decimal con los de su web. Y la
+fórmula de `Highs/Lows(14)` no está publicada: la nuestra reproduce el signo y el
+orden de magnitud observados, pero es una aproximación.
+
+---
+
 ## La validación histórica
 
 Es la parte que separa este análisis de una opinión. Para cada entrada simulada

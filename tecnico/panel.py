@@ -321,6 +321,12 @@ tr.clicable:hover {{ background:var(--panel-2); }}
 .alerta {{ display:flex; gap:7px; background:var(--warn-2);
   border-left:3px solid var(--warn); border-radius:0 5px 5px 0; padding:6px 10px;
   margin-top:6px; font-size:.76rem; color:var(--ink-2); }}
+.cruce {{ border-left:3px solid; border-radius:0 5px 5px 0; padding:8px 12px;
+  font-size:.81rem; color:var(--ink-2); margin-bottom:12px; }}
+.cruce.ok {{ background:var(--alza-2); border-color:var(--alza); }}
+.cruce.ok b {{ color:var(--alza); }}
+.cruce.difiere {{ background:var(--warn-2); border-color:var(--warn); }}
+.cruce.difiere b {{ color:var(--warn); }}
 .aviso-azul {{ background:var(--acento-2); border-left:3px solid var(--acento);
   border-radius:0 5px 5px 0; padding:8px 12px; font-size:.81rem;
   color:var(--ink-2); margin-bottom:12px; }}
@@ -611,6 +617,39 @@ function pintarLista() {
 }
 
 /* ---------------- ficha del activo ---------------- */
+function tablaInvesting(t) {
+  var inv = t.investing;
+  if (!inv || !inv.filas || !inv.filas.length) return '';
+  var clase = function (s) {
+    if (s === 'COMPRA') return 'alza';
+    if (s === 'VENTA') return 'baja';
+    return 'nota';
+  };
+  var fila = function (f) {
+    return '<tr><td>' + esc(f.nombre) + '</td>' +
+      '<td class="n">' + (f.valor === null ? '—' : num(f.valor, Math.abs(f.valor) >= 10 ? 2 : 4)) + '</td>' +
+      '<td class="' + clase(f.senal) + '">' + esc(f.senal.toLowerCase()) + '</td></tr>';
+  };
+  return '<details><summary>Cómo lee este gráfico Investing.com</summary>' +
+    '<div class="interior">' +
+    '<p>Investing usa otros indicadores y otras reglas que TradingView, que es el ' +
+    'criterio del veredicto principal. Las diferencias de fondo: Investing mira ' +
+    'STOCH(9,6), CCI(14), ROC y Highs/Lows, mientras TradingView mira STOCH(14,3,3), ' +
+    'CCI(20), Awesome Oscillator y Momentum. Y sobre todo, Investing vota compra con ' +
+    'el RSI por encima de 50, mientras TradingView solo lo hace si viene de sobreventa ' +
+    'girando al alza. Por eso Investing marca compra bastante más seguido.</p>' +
+    '<p class="nota">Lo que está en sobrecompra, sobreventa o marcando volatilidad ' +
+    'queda fuera del conteo, igual que en Investing.</p>' +
+    '<div class="tabla-caja"><table><thead><tr><th>Indicador</th>' +
+    '<th class="n">Valor</th><th>Señal</th></tr></thead><tbody>' +
+    inv.filas.map(fila).join('') + '</tbody></table></div>' +
+    '<p class="nota">Medias móviles (5, 10, 20, 50, 100 y 200, simple y exponencial): ' +
+    inv.medias.compra + ' compra, ' + inv.medias.venta + ' venta. ' +
+    'Los valores salen de Yahoo Finance, así que pueden diferir un poco de los que ' +
+    'muestra Investing con su propio proveedor.</p>' +
+    '</div></details>';
+}
+
 function bloqueSenales(t) {
   if (!t.senales.length) return '<p class="nota">Sin señales relevantes en las últimas velas.</p>';
   return '<ul class="senales">' + t.senales.map(function (s) {
@@ -715,6 +754,29 @@ function pintarFicha() {
   var avisoAjuste = t.ajuste
     ? '<div class="aviso-azul"><b>Veredicto moderado.</b> ' + esc(t.ajuste) + '.</div>' : '';
 
+  // Segunda lectura con el criterio de Investing.com. Cuando los dos criterios
+  // coinciden la señal es mas solida; cuando difieren, conviene verlo.
+  var inv = t.investing;
+  var bloqueInv = inv
+    ? '<div class="celda"><span class="et">Resumen técnico · Investing</span>' +
+      '<span class="vd ' + CLASE[inv.veredicto] + '">' + esc(inv.veredicto) + '</span>' +
+      '<div class="pi">osciladores ' + inv.osciladores.compra + '↑ ' +
+       inv.osciladores.venta + '↓ · medias ' + inv.medias.compra + '↑ ' +
+       inv.medias.venta + '↓' +
+       (inv.osciladores.sin_voto ? ' · ' + inv.osciladores.sin_voto + ' sin voto' : '') +
+      '</div></div>'
+    : '';
+  var avisoCruce = inv
+    ? (inv.coincide
+        ? '<div class="cruce ok"><b>Los dos criterios coinciden</b> en ' +
+          esc(inv.veredicto.toLowerCase().replace(" fuerte", "")) +
+          '. Dos lecturas independientes apuntando al mismo lado: la señal es más sólida.</div>'
+        : '<div class="cruce difiere"><b>Los criterios no coinciden:</b> el nuestro dice ' +
+          esc(t.resumen.veredicto.toLowerCase()) + ' y el de Investing, ' +
+          esc(inv.veredicto.toLowerCase()) +
+          '. Cuando pasa esto conviene no forzar la entrada y esperar que se alineen.</div>')
+    : '';
+
   // La aptitud del par stop/objetivo va arriba, no enterrada: es lo que dice
   // si tiene sentido operar este activo con estos numeros.
   var apt = t.backtest && t.backtest.aptitud;
@@ -767,13 +829,14 @@ function pintarFicha() {
    '</section>' +
 
    '<section class="tarjeta"><div class="tarjeta-cuerpo">' +
-    avisoAjuste + avisoAlin + avisoTf +
+    avisoCruce + avisoAjuste + avisoAlin + avisoTf +
     '<div class="reja">' +
-     '<div class="celda"><span class="et">Resumen técnico</span>' +
+     '<div class="celda"><span class="et">Resumen técnico · TradingView</span>' +
       '<span class="vd ' + CLASE[t.resumen.veredicto] + '">' + esc(t.resumen.veredicto) + '</span>' +
       '<div class="pi">osciladores ' + t.resumen.osciladores.compra + '↑ ' +
        t.resumen.osciladores.venta + '↓ · medias ' + t.resumen.medias.compra + '↑ ' +
        t.resumen.medias.venta + '↓</div></div>' +
+     bloqueInv +
      bloqueApt +
      '<div class="celda"><span class="et">Volatilidad (ATR)</span>' +
       '<span class="vl">' + num(t.atr_pct, 2) + '%</span>' +
@@ -785,6 +848,7 @@ function pintarFicha() {
       '<span class="vl" style="font-size:.83rem">' + esc(t.fecha) + '</span>' +
       '<div class="pi">' + t.velas_total + ' velas analizadas</div></div>' +
     '</div>' +
+    tablaInvesting(t) +
     '<h3>Señales activas</h3>' + bloqueSenales(t) +
     '<h3>Escenarios</h3>' + bloqueEscenarios(t) +
     '<h3>Soportes y resistencias</h3>' + bloqueNiveles(t) +

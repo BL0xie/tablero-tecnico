@@ -81,6 +81,7 @@ def temporalidad(r: dict, velas_grafico: int, medias: tuple[int, ...]) -> dict:
         "variaciones": r["variaciones_pct"],
         "resumen": r["resumen"],
         "ajuste": r["resumen"].get("ajuste"),
+        "investing": _investing(r, dec),
         "sesgo": list(r["sesgo"]),
         "senales": [{"sesgo": s["sesgo"], "detalle": s["detalle"], "peso": s["peso"]}
                     for s in sorted(r["senales"], key=lambda x: -x["peso"])[:8]],
@@ -93,6 +94,42 @@ def temporalidad(r: dict, velas_grafico: int, medias: tuple[int, ...]) -> dict:
         "rsi": _serie(rsi, 1),
         "backtest": _backtest(r),
         "dec": dec,
+    }
+
+
+def _investing(r: dict, dec: int) -> dict | None:
+    """La lectura con el criterio de Investing, y si coincide con la nuestra.
+
+    Lo util no es el veredicto ajeno por si solo, sino el cruce: dos criterios
+    distintos apuntando al mismo lado es mejor señal que uno solo.
+    """
+    inv = r.get("investing")
+    if not inv:
+        return None
+
+    propio = r["resumen"]["veredicto"]
+    ajeno = inv["veredicto"]
+    # Se compara el bando, no el matiz: COMPRA y COMPRA FUERTE son lo mismo
+    # a la hora de decidir si comprar.
+    bando = lambda v: v.replace(" FUERTE", "")
+    coinciden = bando(propio) == bando(ajeno)
+
+    def num(v):
+        if v is None or not np.isfinite(v):
+            return None
+        return round(float(v), 2 if abs(v) >= 10 else 4)
+
+    return {
+        "veredicto": ajeno,
+        "promedio": inv["promedio"],
+        "coincide": coinciden,
+        "osciladores": inv["osciladores"],
+        "medias": inv["medias"],
+        "filas": [{"nombre": f["nombre"], "valor": num(f["valor"]), "senal": f["senal"]}
+                  for f in inv["filas_osciladores"]],
+        "filas_medias": [{"nombre": f["nombre"], "valor": num(f["valor"]),
+                          "senal": f["senal"]}
+                         for f in inv["filas_medias"]],
     }
 
 
