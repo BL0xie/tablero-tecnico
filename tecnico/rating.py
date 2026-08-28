@@ -502,6 +502,112 @@ def senales_clave(df: pd.DataFrame, cfg: dict) -> list[dict]:
     return out
 
 
+def tendencia_de_fondo(df: pd.DataFrame, n: int = 200) -> dict | None:
+    """Régimen de la media de 200 en diario: el marco donde ocurre todo lo demás.
+
+    No alcanza con mirar si el precio está por encima o por debajo. Una media
+    que sube con el precio arriba es una tendencia alcista; el precio arriba de
+    una media que baja es un rebote dentro de una caída, y opera distinto. Por
+    eso el régimen cruza las dos cosas: posición y pendiente.
+
+    Se calcula siempre sobre velas diarias, aunque se esté mirando otra
+    temporalidad: es la referencia de fondo, no una lectura más del momento.
+    """
+    if len(df) < n + 20:
+        return None
+
+    close = df["Close"]
+    sma = ind.sma(close, n)
+    ema = ind.ema(close, n)
+    if sma.dropna().empty:
+        return None
+
+    precio = float(close.iloc[-1])
+    media = float(sma.dropna().iloc[-1])
+    dist = 100 * (precio - media) / media
+    encima = precio > media
+
+    # Pendiente: cuánto se movió la media en los últimos 20 días, en porcentaje.
+    # Una media de 200 se mueve despacio, así que umbrales chicos alcanzan.
+    hace20 = float(sma.dropna().iloc[-21]) if len(sma.dropna()) > 21 else media
+    pendiente_pct = 100 * (media - hace20) / hace20 if hace20 else 0.0
+    if pendiente_pct > 0.5:
+        pendiente = "subiendo"
+    elif pendiente_pct < -0.5:
+        pendiente = "bajando"
+    else:
+        pendiente = "plana"
+
+    # Hace cuántas velas que el precio está de este lado de la media.
+    lado = (close > sma).dropna()
+    velas_del_lado = 0
+    for v in reversed(lado.to_numpy()):
+        if bool(v) == encima:
+            velas_del_lado += 1
+        else:
+            break
+
+    # Cruce de la media de 50 con la de 200: dorado o de la muerte. Se busca el
+    # último cambio de signo real y se nombra por la dirección de ESE cruce, no
+    # por el signo de hoy: si las medias se rozan y oscilan, lo que importa es
+    # hacia dónde cruzó la última vez, y hace cuánto.
+    cruce_medias = None
+    velas_desde_cruce = None
+    if len(df) > n + 50:
+        d = (ind.sma(close, 50) - sma).dropna()
+        if len(d) > 2:
+            signos = np.sign(d.to_numpy())
+            for i in range(len(signos) - 1, 0, -1):
+                if signos[i] != 0 and signos[i - 1] != 0 and signos[i] != signos[i - 1]:
+                    atras = len(signos) - 1 - i
+                    if atras <= 60:   # más viejo que eso ya no es noticia
+                        cruce_medias = "dorado" if signos[i] > 0 else "muerte"
+                        velas_desde_cruce = atras
+                    break
+
+    if encima and pendiente == "subiendo":
+        regimen, resumen = "alcista", "tendencia de fondo alcista"
+    elif not encima and pendiente == "bajando":
+        regimen, resumen = "bajista", "tendencia de fondo bajista"
+    elif encima:
+        regimen, resumen = "transicion", "por encima de la media, pero la media no acompaña"
+    else:
+        regimen, resumen = "transicion", "por debajo de la media, aunque la media aguanta"
+
+    # Explicación en una frase, para no obligar a interpretar los números.
+    if regimen == "alcista":
+        texto = (f"El precio está {dist:+.1f}% sobre la media de {n} y la media viene "
+                 f"{pendiente} ({pendiente_pct:+.1f}% en 20 ruedas). Marco favorable "
+                 f"para buscar compras.")
+    elif regimen == "bajista":
+        texto = (f"El precio está {dist:+.1f}% respecto de la media de {n} y la media viene "
+                 f"{pendiente} ({pendiente_pct:+.1f}% en 20 ruedas). Las compras acá van "
+                 f"contra la corriente de fondo.")
+    elif encima:
+        texto = (f"El precio recuperó la media de {n} ({dist:+.1f}%) pero la media todavía "
+                 f"viene {pendiente}. Puede ser el arranque de un cambio, o un rebote "
+                 f"dentro de la caída: conviene esperar confirmación.")
+    else:
+        texto = (f"El precio está {dist:+.1f}% bajo la media de {n}, aunque la media sigue "
+                 f"{pendiente}. Suele ser una corrección dentro de una tendencia mayor.")
+
+    return {
+        "periodos": n,
+        "media": round(media, 4),
+        "ema": round(float(ema.dropna().iloc[-1]), 4) if ema.notna().any() else None,
+        "distancia_pct": round(dist, 2),
+        "encima": encima,
+        "pendiente": pendiente,
+        "pendiente_pct": round(pendiente_pct, 2),
+        "velas_del_lado": velas_del_lado,
+        "cruce_medias": cruce_medias,
+        "velas_desde_cruce": velas_desde_cruce,
+        "regimen": regimen,
+        "resumen": resumen,
+        "texto": texto,
+    }
+
+
 def sesgo_de_senales(senales: list[dict]) -> tuple[str, float]:
     """Sesgo neto ponderado de las senales clave."""
     alcista = sum(s["peso"] for s in senales if s["sesgo"] == "alcista")

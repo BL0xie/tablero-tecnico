@@ -212,6 +212,7 @@ def activo(res: dict, cfg: dict, meta: dict, previo: dict) -> dict:
         "nombre": meta.get("nombre", ticker),
         "grupo": meta.get("grupo", "otro"),
         "consenso": res["consenso"],
+        "fondo": res.get("tendencia_fondo"),
         "cambio": antes if antes and antes != ahora else None,
         "errores": list(res["errores"]),
         "tf": {tf: temporalidad(r, velas_g, medias)

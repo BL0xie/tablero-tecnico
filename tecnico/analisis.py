@@ -171,6 +171,18 @@ def analizar(ticker: str, cfg: dict, csv: str | None = None,
         raise datos.ErrorDatos(
             f"{ticker}: ninguna temporalidad pudo analizarse ({errores})")
 
+    # La tendencia de fondo va a nivel del activo, no de cada temporalidad:
+    # es la misma referencia se esté mirando el diario, las 4 horas o la hora.
+    # Se calcula siempre sobre velas diarias, aunque el perfil no las incluya.
+    fondo = None
+    try:
+        diario = por_tf["1d"]["df"] if "1d" in por_tf else datos.obtener(
+            ticker, "1d", csv=csv, usar_cache=usar_cache)
+        fondo = rating.tendencia_de_fondo(
+            diario, cfg.get("parametros", {}).get("media_fondo", 200))
+    except Exception:
+        pass  # sin historial suficiente: el tablero lo muestra como "sin datos"
+
     return {
         "ticker": ticker,
         "perfil": cfg.get("nombre", "sin nombre"),
@@ -178,6 +190,7 @@ def analizar(ticker: str, cfg: dict, csv: str | None = None,
         "temporalidades": por_tf,
         "errores": errores,
         "consenso": _consenso(por_tf, cfg),
+        "tendencia_fondo": fondo,
         "config": cfg,
     }
 

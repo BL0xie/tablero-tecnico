@@ -260,6 +260,40 @@ EMA 200 y con cinco toques históricos, sí.
 
 ---
 
+## La tendencia de fondo: media de 200 en diario
+
+Cada activo trae, por encima de todo lo demás, el régimen de su media de 200
+diaria. Es el marco donde ocurre el resto del análisis, así que **se muestra en
+las tres temporalidades**: se calcula siempre sobre velas diarias, aunque se esté
+mirando el gráfico de 4 horas o de 1 hora.
+
+No alcanza con mirar si el precio está arriba o abajo de la media. El régimen
+cruza dos cosas, posición y pendiente:
+
+| Régimen | Qué significa |
+|---|---|
+| **Alcista** | Precio sobre la media y la media subiendo. Marco favorable para comprar. |
+| **Bajista** | Precio bajo la media y la media bajando. Las compras van contra la corriente. |
+| **En transición** | Los dos no coinciden. Precio arriba de una media que baja es un rebote dentro de una caída, no un cambio de tendencia. |
+
+Esa tercera fila es la que evita el error clásico. Al momento de escribir esto,
+BTC estaba 16% por encima de su media de 200 —parecía alcista— pero la media
+venía bajando y el precio llevaba apenas 9 ruedas de ese lado: rebote, no cambio
+de tendencia. Sobre los 76 activos, 29 dan alcista, 15 bajista y **32 quedan en
+transición**, que es justo donde conviene no apurarse.
+
+También detecta el cruce de la media de 50 con la de 200 —dorado o de la
+muerte— nombrado por la dirección real del cruce y con las ruedas que pasaron
+desde entonces, para no anunciar como noticia algo de hace tres meses.
+
+**Dónde se ve:** un bloque al principio de cada ficha, un triángulo al lado de
+cada activo en la lista lateral (▲ alcista, ▼ bajista, = en transición) y dos
+filtros para quedarse solo con uno u otro régimen. Además, todo escenario de
+compra en un activo con fondo bajista aparece con un aviso: los rebotes ahí
+suelen durar poco.
+
+---
+
 ## Dos criterios cruzados: TradingView e Investing
 
 El resumen técnico de Investing.com y el de TradingView **no son la misma cosa**,

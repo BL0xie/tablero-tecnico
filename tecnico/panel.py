@@ -321,6 +321,38 @@ tr.clicable:hover {{ background:var(--panel-2); }}
 .alerta {{ display:flex; gap:7px; background:var(--warn-2);
   border-left:3px solid var(--warn); border-radius:0 5px 5px 0; padding:6px 10px;
   margin-top:6px; font-size:.76rem; color:var(--ink-2); }}
+/* ---------------- tendencia de fondo ---------------- */
+.fondo {{ border:1px solid var(--linea); border-left:4px solid; border-radius:0 7px 7px 0;
+  padding:11px 14px; margin-bottom:13px; background:var(--panel-2); }}
+.fondo-alcista {{ border-left-color:var(--alza); }}
+.fondo-bajista {{ border-left-color:var(--baja); }}
+.fondo-transicion {{ border-left-color:var(--warn); }}
+.fondo-cab {{ display:flex; flex-wrap:wrap; gap:9px; align-items:baseline;
+  justify-content:space-between; margin-bottom:7px; }}
+.fondo-tit {{ font-size:.68rem; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--muted); font-weight:600; }}
+.fondo-vd {{ font-weight:600; font-size:.92rem; }}
+.fondo-alcista .fondo-vd {{ color:var(--alza); }}
+.fondo-bajista .fondo-vd {{ color:var(--baja); }}
+.fondo-transicion .fondo-vd {{ color:var(--warn); }}
+.fondo-datos {{ display:flex; flex-wrap:wrap; gap:4px 16px; font-size:.75rem;
+  color:var(--muted); }}
+.fondo-datos b {{ font-family:"IBM Plex Mono",monospace; color:var(--ink);
+  font-weight:500; font-variant-numeric:tabular-nums; }}
+.fondo-txt {{ margin:7px 0 0; font-size:.81rem; color:var(--ink-2); max-width:72ch; }}
+.pastilla {{ display:inline-block; padding:2px 9px; border-radius:99px;
+  font-size:.69rem; font-weight:600; border:1px solid currentColor; }}
+.pastilla.alza {{ background:var(--alza-2); }}
+.pastilla.baja {{ background:var(--baja-2); }}
+.mfondo {{ font-size:.62rem; margin-left:5px; vertical-align:1px; }}
+.mfondo.f-alcista {{ color:var(--alza); }}
+.mfondo.f-bajista {{ color:var(--baja); }}
+.mfondo.f-transicion {{ color:var(--warn); }}
+.filtro.f-alcista {{ color:var(--alza); }}
+.filtro.f-bajista {{ color:var(--baja); }}
+.filtro.f-alcista[aria-pressed="true"], .filtro.f-bajista[aria-pressed="true"] {{
+  color:var(--panel); }}
+
 .cruce {{ border-left:3px solid; border-radius:0 5px 5px 0; padding:8px 12px;
   font-size:.81rem; color:var(--ink-2); margin-bottom:12px; }}
 .cruce.ok {{ background:var(--alza-2); border-color:var(--alza); }}
@@ -482,6 +514,10 @@ def construir(resultados: list[dict], cfg: dict, fallos: dict[str, str],
    <button class="filtro" data-grupo="" aria-pressed="true">Todos</button>
    {filtros}
    <button class="filtro" data-grupo="__cartera" aria-pressed="false">En cartera</button>
+   <button class="filtro f-alcista" data-grupo="__sobre200"
+    aria-pressed="false" title="Precio sobre la media de 200 y la media subiendo">▲ fondo alcista</button>
+   <button class="filtro f-bajista" data-grupo="__bajo200"
+    aria-pressed="false" title="Precio bajo la media de 200 y la media bajando">▼ fondo bajista</button>
   </div>
   <div class="lista" id="lista"></div>
  </aside>
@@ -588,6 +624,8 @@ function pintarLista() {
   var q = est.busca.toLowerCase();
   var vistos = ACT.filter(function (a) {
     if (est.grupo === '__cartera') { if (!est.cartera.has(a.ticker)) return false; }
+    else if (est.grupo === '__sobre200') { if (!a.fondo || a.fondo.regimen !== 'alcista') return false; }
+    else if (est.grupo === '__bajo200') { if (!a.fondo || a.fondo.regimen !== 'bajista') return false; }
     else if (est.grupo && a.grupo !== est.grupo) return false;
     if (!q) return true;
     return a.ticker.toLowerCase().indexOf(q) >= 0 || a.nombre.toLowerCase().indexOf(q) >= 0;
@@ -610,6 +648,10 @@ function pintarLista() {
       '<span class="tilde" data-marcar="' + esc(a.ticker) + '" title="Agregar a mi cartera">✓</span>' +
       '<span><span class="tk">' + esc(a.ticker) + '</span>' +
       (t.ajuste ? '<span class="ojo" title="' + esc(t.ajuste) + '">⚠</span>' : '') +
+      (a.fondo ? '<span class="mfondo f-' + a.fondo.regimen + '" title="Media de 200 en diario: ' +
+        esc(a.fondo.resumen) + '">' +
+        (a.fondo.regimen === 'alcista' ? '▲' : a.fondo.regimen === 'bajista' ? '▼' : '=') +
+        '</span>' : '') +
       '<span class="nm" title="' + esc(a.nombre) + ' · ' + esc(motivo) + '">' + esc(motivo) + '</span></span>' +
       '<span class="pc num"><span class="punto ' + CLASE[a.consenso.veredicto] + '"></span>' +
       '<span class="' + claseVar(v) + '">' + pct(v) + '</span></span></div>';
@@ -659,8 +701,15 @@ function bloqueSenales(t) {
   }).join('') + '</ul>';
 }
 
-function bloqueEscenarios(t) {
+function bloqueEscenarios(t, fondo) {
   if (!t.entradas.length) return '<p class="nota">Ningún escenario dentro del rango del perfil.</p>';
+  // Una compra contra la tendencia de fondo no está prohibida, pero es otra
+  // operación: hay que saber que se está yendo contra la corriente.
+  var contra = fondo && fondo.regimen === 'bajista'
+    ? '<div class="alerta"><span class="mk">!</span><span>Va contra la tendencia de fondo: ' +
+      'el precio está bajo la media de ' + fondo.periodos + ' y la media viene bajando. ' +
+      'Los rebotes acá suelen durar poco.</span></div>'
+    : '';
   return t.entradas.map(function (x) {
     var alertas = (x.avisos || []).map(function (a) {
       return '<div class="alerta"><span class="mk">!</span><span>' + esc(a) + '</span></div>';
@@ -685,7 +734,8 @@ function bloqueEscenarios(t) {
       x.confianza + '%"></i></span> ' + Math.round(x.confianza) + '</span></div>' +
       cuerpo +
       '<p class="txt"><b>Se activa:</b> ' + esc(x.disparador) + '</p>' +
-      '<p class="txt"><b>Se cae:</b> ' + esc(x.invalidacion) + '</p>' + alertas + '</div>';
+      '<p class="txt"><b>Se cae:</b> ' + esc(x.invalidacion) + '</p>' + alertas +
+      (x.direccion === 'largo' ? contra : '') + '</div>';
   }).join('');
 }
 
@@ -766,6 +816,36 @@ function pintarFicha() {
        (inv.osciladores.sin_voto ? ' · ' + inv.osciladores.sin_voto + ' sin voto' : '') +
       '</div></div>'
     : '';
+  // Tendencia de fondo: la media de 200 en diario. Se muestra en todas las
+  // temporalidades porque es el marco, no una lectura del momento.
+  var f = a.fondo;
+  var bloqueFondo = '';
+  if (f) {
+    var etiqueta = {alcista: 'Alcista', bajista: 'Bajista', transicion: 'En transición'}[f.regimen];
+    var claseF = {alcista: 'fondo-alcista', bajista: 'fondo-bajista', transicion: 'fondo-transicion'}[f.regimen];
+    var cruce = f.cruce_medias
+      ? '<span class="pastilla ' + (f.cruce_medias === 'dorado' ? 'alza' : 'baja') + '">cruce ' +
+        (f.cruce_medias === 'dorado' ? 'dorado' : 'de la muerte') +
+        (f.velas_desde_cruce !== null && f.velas_desde_cruce !== undefined
+          ? ' hace ' + f.velas_desde_cruce + (f.velas_desde_cruce === 1 ? ' rueda' : ' ruedas') : '') +
+        '</span>' : '';
+    bloqueFondo =
+      '<div class="fondo ' + claseF + '">' +
+       '<div class="fondo-cab">' +
+        '<span class="fondo-tit">Tendencia de fondo · media de ' + f.periodos + ' en diario</span>' +
+        '<span class="fondo-vd">' + etiqueta + '</span>' +
+       '</div>' +
+       '<div class="fondo-datos">' +
+        '<span>media <b>' + num(f.media, f.media >= 1000 ? 0 : 2) + '</b></span>' +
+        '<span>precio <b class="' + (f.encima ? 'alza' : 'baja') + '">' + pct(f.distancia_pct, 1) + '</b></span>' +
+        '<span>la media viene <b>' + esc(f.pendiente) + '</b> (' + pct(f.pendiente_pct, 1) + ' en 20)</span>' +
+        '<span>' + (f.encima ? 'encima' : 'debajo') + ' hace <b>' + f.velas_del_lado + '</b> ruedas</span>' +
+       '</div>' +
+       (cruce ? '<div style="margin-top:6px">' + cruce + '</div>' : '') +
+       '<p class="fondo-txt">' + esc(f.texto) + '</p>' +
+      '</div>';
+  }
+
   var avisoCruce = inv
     ? (inv.coincide
         ? '<div class="cruce ok"><b>Los dos criterios coinciden</b> en ' +
@@ -829,7 +909,7 @@ function pintarFicha() {
    '</section>' +
 
    '<section class="tarjeta"><div class="tarjeta-cuerpo">' +
-    avisoCruce + avisoAjuste + avisoAlin + avisoTf +
+    bloqueFondo + avisoCruce + avisoAjuste + avisoAlin + avisoTf +
     '<div class="reja">' +
      '<div class="celda"><span class="et">Resumen técnico · TradingView</span>' +
       '<span class="vd ' + CLASE[t.resumen.veredicto] + '">' + esc(t.resumen.veredicto) + '</span>' +
@@ -850,7 +930,7 @@ function pintarFicha() {
     '</div>' +
     tablaInvesting(t) +
     '<h3>Señales activas</h3>' + bloqueSenales(t) +
-    '<h3>Escenarios</h3>' + bloqueEscenarios(t) +
+    '<h3>Escenarios</h3>' + bloqueEscenarios(t, a.fondo) +
     '<h3>Soportes y resistencias</h3>' + bloqueNiveles(t) +
     bloqueBacktest(t) +
    '</div></section>';
