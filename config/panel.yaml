@@ -46,12 +46,16 @@ panel:
   velas_grafico: 150       # velas que viajan al navegador: define hasta donde se puede alejar el zoom
   temporalidad_grafico: 1d # cual se dibuja por defecto al abrir la ficha
 
-# Cuando corre la tarea que regenera el tablero. Tiene que coincidir con el cron
-# de la tarea programada: sirve para que la pagina pueda avisar cuando le toca la
-# proxima actualizacion, y para distinguir "esta pausado" de "deberia haber
-# corrido y no corrio".
+# Cuando se regenera el tablero. Sirve para que la pagina avise cuando le toca
+# la proxima actualizacion, y para distinguir "esta pausado porque no toca" de
+# "deberia haberse actualizado y no paso".
+#
+# EN UTC, porque quien publica es GitHub Actions y corre en UTC. Tiene que
+# coincidir con el bucle de .github/workflows/tablero.yml, que republica cada
+# 15 minutos hasta FIN_RUEDA_UTC (21:30). Antes esto describia la tarea
+# programada local en hora de la PC, que ya no es quien publica.
 actualizacion:
   dias: [0, 1, 2, 3, 4]      # lunes = 0 ... domingo = 6
-  hora_desde: 7
-  hora_hasta: 16
-  minutos: [4, 19, 34, 49]
+  hora_desde: 13
+  hora_hasta: 21
+  minutos: [0, 15, 30, 45]

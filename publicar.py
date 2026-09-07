@@ -165,7 +165,11 @@ def main(argv=None) -> int:
         print("Ningun activo pudo analizarse. No se escribio el tablero.")
         return 1
 
-    html = panel.construir(resultados, cfg, fallos, datetime.now(), previo, universo)
+    # Con huso puesto: lo publica GitHub Actions en UTC y lo lee gente en
+    # Argentina. Sin la marca de zona el navegador lo toma como hora propia
+    # y el dato le parece venir del futuro.
+    html = panel.construir(resultados, cfg, fallos, datetime.now().astimezone(),
+                           previo, universo)
     destino = Path(args.salida)
     destino.parent.mkdir(parents=True, exist_ok=True)
     destino.write_text(html, encoding="utf-8")

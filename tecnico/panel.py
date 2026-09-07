@@ -13,7 +13,7 @@ from __future__ import annotations
 import html as _html
 import json
 import math
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 
 CLASE_VEREDICTO = {
     "COMPRA FUERTE": "v-cf", "COMPRA": "v-c", "NEUTRAL": "v-n",
@@ -30,9 +30,10 @@ def e(v) -> str:
 def proxima_corrida(desde: datetime, horario: dict) -> datetime | None:
     """Cuando vuelve a regenerarse el tablero, segun el horario configurado.
 
-    Se calcula aca y no en el navegador porque el horario esta en la hora de
-    esta maquina, que no tiene por que coincidir con la de quien mira la pagina.
-    Mandando el momento exacto, cada uno lo ve en su propia hora.
+    El horario se define en UTC porque quien publica es GitHub Actions, que
+    corre en UTC. El calculo se hace aca y no en el navegador para mandar un
+    momento absoluto: asi cada uno lo ve en su propia hora, sin que la pagina
+    tenga que saber nada de husos.
     """
     dias = set(horario.get("dias", [0, 1, 2, 3, 4]))
     minutos = sorted(horario.get("minutos", [0]))
@@ -41,16 +42,20 @@ def proxima_corrida(desde: datetime, horario: dict) -> datetime | None:
     if not dias or not minutos:
         return None
 
-    tic = desde.replace(second=0, microsecond=0)
+    # Todo se resuelve en UTC y el resultado sale con su huso puesto, para que
+    # el navegador no tenga que adivinar de que zona vino la fecha.
+    ref = desde.astimezone(timezone.utc) if desde.tzinfo else desde.replace(tzinfo=timezone.utc)
+    ref = ref.replace(second=0, microsecond=0)
+
     # Una semana por delante alcanza: si en 7 dias no hay corrida, no hay horario.
     for salto in range(8):
-        dia = (tic + timedelta(days=salto)).date()
+        dia = (ref + timedelta(days=salto)).date()
         if dia.weekday() not in dias:
             continue
         for hora in range(h0, h1 + 1):
             for minuto in minutos:
-                cand = datetime.combine(dia, time(hora, minuto))
-                if cand > desde:
+                cand = datetime.combine(dia, time(hora, minuto), tzinfo=timezone.utc)
+                if cand > ref:
                     return cand
     return None
 
@@ -493,7 +498,7 @@ def construir(resultados: list[dict], cfg: dict, fallos: dict[str, str],
   </div>
   <div class="reloj" id="reloj">
    <span class="latido" id="latido"></span>
-   <span>datos al <b>{generado.strftime('%d/%m %H:%M')}</b><br>
+   <span>datos al <b id="selloFecha">{generado.strftime('%d/%m %H:%M')}</b><br>
     <span id="antiguedad"></span></span>
   </div>
  </div>
@@ -1525,9 +1530,22 @@ if (window.matchMedia) {
     return 'hace ' + Math.floor(min / 1440) + ' días';
   }
 
+  // La fecha se muestra en la hora de quien mira, no en la del que publica:
+  // el tablero lo genera GitHub en UTC y se lee desde Argentina.
+  var sf = document.getElementById('selloFecha');
+  if (sf && !isNaN(gen.getTime())) {
+    sf.textContent = ('0' + gen.getDate()).slice(-2) + '/' +
+      ('0' + (gen.getMonth() + 1)).slice(-2) + ' ' +
+      ('0' + gen.getHours()).slice(-2) + ':' + ('0' + gen.getMinutes()).slice(-2);
+  }
+
   function refrescar() {
     var min = Math.floor((Date.now() - gen.getTime()) / 60000);
-    if (isNaN(min) || min < 0) return;
+    if (isNaN(min)) return;
+    // Un dato "del futuro" por unos minutos es normal: el reloj del que mira y
+    // el del servidor no estan sincronizados al segundo. Se trata como recien
+    // publicado en vez de dejar el cartel en blanco.
+    if (min < 0) min = 0;
     var txt = antiguedad(min);
     var color = 'var(--acento)';
 
