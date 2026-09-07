@@ -26,8 +26,26 @@ on:
   schedule:
     # Un arranque por hora. El primero que agarre se queda con la rueda; el
     # resto espera turno y sirve de relevo (o de red, si GitHub saltea alguno).
-    - cron: "0 13-21 * * 1-5"
-    # Cierre, con las velas del dia ya cerradas.
+    #
+    # LA VENTANA VA CORRIDA CUATRO HORAS HACIA ATRAS A PROPOSITO.
+    #
+    # Pidiendo "0 13-21" el primer disparo del dia llegaba entre las 16:41 y las
+    # 16:56 (medido el 2, 3 y 4 de septiembre): casi cuatro horas tarde, con lo
+    # cual el tablero no se actualizaba durante la apertura de Nueva York
+    # (13:30 UTC) ni en las primeras tres horas de rueda, que es justo cuando
+    # mas se mueve. El planificador de GitHub entrega los disparos programados
+    # cuando puede, y el atraso resulto ser bastante estable.
+    #
+    # Asi que se le pide mas temprano para que el primero aterrice cerca de la
+    # apertura. Se mantiene la MISMA cantidad de disparos (nueve) en vez de
+    # agregar mas: cuantos mas se piden, mas saltea el planificador.
+    #
+    # Es un ajuste empirico contra un comportamiento no documentado: si GitHub
+    # cambia sus tiempos de entrega, hay que volver a medir los arranques
+    # reales con `gh run list` y correr la ventana de nuevo.
+    - cron: "0 9-17 * * 1-5"
+    # Cierre, con las velas del dia ya cerradas. Este queda en hora real porque
+    # el bucle igual corta solo al llegar a FIN_RUEDA_UTC.
     - cron: "25 21 * * 1-5"
   workflow_dispatch:        # permite correrlo a mano desde la pestana Actions
 
