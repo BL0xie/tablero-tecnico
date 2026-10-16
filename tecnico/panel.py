@@ -39,6 +39,9 @@ def proxima_corrida(desde: datetime, horario: dict) -> datetime | None:
     minutos = sorted(horario.get("minutos", [0]))
     h0 = horario.get("hora_desde", 0)
     h1 = horario.get("hora_hasta", 23)
+    # Hora a la que el bucle corta, como HHMM. Los slots que caen en ese
+    # momento o despues no llegan a publicarse nunca.
+    fin = horario.get("fin_hhmm")
     if not dias or not minutos:
         return None
 
@@ -54,6 +57,8 @@ def proxima_corrida(desde: datetime, horario: dict) -> datetime | None:
             continue
         for hora in range(h0, h1 + 1):
             for minuto in minutos:
+                if fin is not None and hora * 100 + minuto >= fin:
+                    continue
                 cand = datetime.combine(dia, time(hora, minuto), tzinfo=timezone.utc)
                 if cand > ref:
                     return cand

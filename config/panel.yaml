@@ -59,3 +59,8 @@ actualizacion:
   hora_desde: 13
   hora_hasta: 21
   minutos: [0, 15, 30, 45]
+  # El bucle del workflow corta al llegar a esta hora, asi que el slot de las
+  # 21:30 nunca llega a publicarse. Sin este tope la pagina prometia una
+  # actualizacion que no iba a ocurrir y, pasada esa hora, se ponia en rojo
+  # ("deberia haberse actualizado") todo el fin de semana sin motivo.
+  fin_hhmm: 2130             # = FIN_RUEDA_UTC en .github/workflows/tablero.yml
